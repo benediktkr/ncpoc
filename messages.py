@@ -1,23 +1,43 @@
 import hmac
 import json
 
-import node
+class InvalidSignatureError(Exception):
+    pass
 
-def create_hello(nodeid, version):
-    msg = {'nodeid': nodeid,
-           'versyion': version}
+def make_envelope(msg):
+    nodeid = msg['nodeid']
     sign = hmac.new(nodeid, json.dumps(msg))
     envelope = {'msg': msg,
                 'sign': sign.hexdigest()}
     return json.dumps(envelope)
 
-def validate_hello(envelope):
+
+# ------
+
+def create_ackhello(nodeid):
+    msg = {'name': 'ackhello',
+           'nodeid': nodeid}
+    return make_envelope(msg)
+
+def create_hello(nodeid, version):
+    msg = {'nodeid': nodeid,
+           'version': version,
+           'name': 'hello'}
+    return make_envelope(msg)
+
+# -------
+
+def read_message(envelope):
     envelope = json.loads(envelope)
     nodeid = str(envelope['msg']['nodeid'])
     signature = str(envelope['sign'])
     msg = json.dumps(envelope['msg'])
     verify_sign = hmac.new(nodeid, msg)
-    return hmac.compare_digest(verify_sign.hexdigest(), signature)
+    if hmac.compare_digest(verify_sign.hexdigest(), signature):
+        return envelope
+    else:
+        raise InvalidSignatureError
+
 
     
     

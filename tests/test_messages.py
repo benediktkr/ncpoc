@@ -15,7 +15,12 @@ class TestMessages(unittest.TestCase):
 
     def test_hello(self):
         hello = messages.create_hello(self.nodeid, 0)
-        self.assertTrue(messages.validate_hello(hello))
+        # check that InvalidSignatureError is not raised
+        return messages.read_message(hello)
+
+    def test_ackhello(self):
+        ackhello = messages.create_ackhello(self.nodeid)
+        return messages.read_message(ackhello)
 
 class TestProof(unittest.TestCase):
     def setUp(self):
