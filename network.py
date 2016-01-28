@@ -16,7 +16,6 @@ class NCServer(Protocol):
         self.ip = self.transport.getPeer()
         print "JOIN: ", self.ip
         self.factory.peers[self.ip] = self
-        self.transport.write(str(len(self.factory.peers)) + " peers connected\n")
 
     def connectionLost(self, reason):
         print "LEAVES:", self.ip
