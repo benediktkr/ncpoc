@@ -7,15 +7,12 @@ from twisted.internet import reactor
 import messages
 import node
 
-my_nodeid = node.generate_nodeid()
-
 class NCServer(Protocol):
     def __init__(self, factory):
         self.factory = factory
         self.state = "GETHELLO"
 
     def connectionMade(self):
-        # Send and recieve hello and helloack
         self.ip = self.transport.getPeer()
         print "JOIN: ", self.ip
         self.factory.peers[self.ip] = self
@@ -34,7 +31,7 @@ class NCServer(Protocol):
 
     def handle_HELLO(self, hello):
         try:
-            hello = messages.read_hello(hello)
+            hello = messages.read_message(hello)
             self.remote_nodeid = hello['msg']['nodeid']
             if self.remote_nodeid == self.factory.nodeid:
                 print "Connected to self. Aborting"
