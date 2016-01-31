@@ -87,19 +87,6 @@ class NCFactory(Factory):
     def buildProtocol(self, addr):
         return NCProtocol(self, "GETHELLO")
 
-class NCClientFactory(ClientFactory):
-    def __init__(self, nodeid):
-        self.nodeid = nodeid
-
-    def startFactory(self):
-        self.peers = {}
-
-    def buildProtocol(self, addr):
-        print 'CONNECTED:', addr
-        p = NCProtocol(self)
-        p.send_HELLO()
-        return p
-
 def gotProtocol(p):
     p.send_HELLO()
     
