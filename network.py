@@ -23,7 +23,7 @@ class NCProtocol(Protocol):
         self.host_ip = h_ip.host + ":" + str(h_ip.port)
 
     def print_peers(self):
-        if len(self.factory.peers):
+        if len(self.factory.peers) == 0:
             print " [ ] PEERS: No peers connected."
         else:
             print " [ ] PEERS:"
@@ -54,7 +54,7 @@ class NCProtocol(Protocol):
             hello = messages.read_message(hello)
             self.remote_nodeid = hello['msg']['nodeid']
             if self.remote_nodeid == self.factory.nodeid:
-                print "     [!] Connected to self on", self.host_ip
+                print "     [!] Dropping connection to self on", self.host_ip
                 self.transport.loseConnection()
             else:
                 my_hello = messages.create_hello(self.factory.nodeid, self.VERSION)
@@ -88,6 +88,7 @@ class NCFactory(Factory):
         return NCProtocol(self, "GETHELLO")
 
 def gotProtocol(p):
+    # ClientFactory instead?
     p.send_HELLO()
     
 if __name__ == "__main__":
@@ -107,8 +108,9 @@ if __name__ == "__main__":
 
     
     # connect to bootstrap addresses
+    print " [ ] Trying to connect to bootstrap hosts:"
     for bootstrap in node.bootstrap_list:
-        print " [ ] Trying to connect to bootstrap host:", bootstrap
+        print "     [*]", bootstrap
         host, port = bootstrap.split(":")
         point = TCP4ClientEndpoint(reactor, host, int(port))
         d = connectProtocol(point, NCProtocol(ncfactory, "SENDHELLO"))
