@@ -17,13 +17,18 @@ class NCProtocol(Protocol):
         self.remote_nodeid = None
 
     def connectionMade(self):
-        ip = self.transport.getPeer()
-        self.remote_ip = ip.host + ":" + str(ip.port)
+        r_ip = self.transport.getPeer()
+        h_ip = self.transport.getHost()
+        self.remote_ip = r_ip.host + ":" + str(r_ip.port)
+        self.host_ip = h_ip.host + ":" + str(h_ip.port)
 
     def print_peers(self):
-        print " [ ] PEERS:"
-        for peer in self.factory.peers:
-            print "     [*]", peer, self.factory.peers[peer]
+        if len(self.factory.peers):
+            print " [ ] PEERS: No peers connected."
+        else:
+            print " [ ] PEERS:"
+            for peer in self.factory.peers:
+                print "     [*]", peer, self.factory.peers[peer]
 
     def connectionLost(self, reason):
         print " [ ] LEAVES:", self.remote_nodeid
@@ -49,7 +54,7 @@ class NCProtocol(Protocol):
             hello = messages.read_message(hello)
             self.remote_nodeid = hello['msg']['nodeid']
             if self.remote_nodeid == self.factory.nodeid:
-                print "     [!] Connected to self. Aborting"
+                print "     [!] Connected to self on", self.host_ip
                 self.transport.loseConnection()
             else:
                 my_hello = messages.create_hello(self.factory.nodeid, self.VERSION)
