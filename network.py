@@ -1,6 +1,6 @@
 import sys
 
-from twisted.internet.protocol import Protocol, Factory, ClientFactory
+from twisted.internet.protocol import Protocol, Factory
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint
 from twisted.internet.endpoints import connectProtocol
 from twisted.internet import reactor
