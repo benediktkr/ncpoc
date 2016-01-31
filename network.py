@@ -10,11 +10,12 @@ import messages
 import node
 
 class NCProtocol(Protocol):
-    def __init__(self, factory, state="GETHELLO"):
+    def __init__(self, factory, state="GETHELLO", kind="RECV"):
         self.factory = factory
         self.state = state
         self.VERSION = 0
         self.remote_nodeid = None
+        self.kind = kind
 
     def connectionMade(self):
         r_ip = self.transport.getPeer()
@@ -28,7 +29,8 @@ class NCProtocol(Protocol):
         else:
             print " [ ] PEERS:"
             for peer in self.factory.peers:
-                print "     [*]", peer, self.factory.peers[peer]
+                addr, kind = self.factory.peers[peer] 
+                print "     [*]", peer, addr, kind
 
     def connectionLost(self, reason):
         print " [ ] LEAVES:", self.remote_nodeid
@@ -59,7 +61,7 @@ class NCProtocol(Protocol):
             else:
                 my_hello = messages.create_hello(self.factory.nodeid, self.VERSION)
                 self.transport.write(my_hello + "\n")
-                self.factory.peers[self.remote_nodeid] = self.remote_ip
+                self.factory.peers[self.remote_nodeid] = (self.remote_ip, self.kind)
                 self.state = "READY"
 
                 print " [ ] JOINED:", self.remote_nodeid
@@ -85,7 +87,7 @@ class NCFactory(Factory):
         pass
 
     def buildProtocol(self, addr):
-        return NCProtocol(self, "GETHELLO")
+        return NCProtocol(self, "GETHELLO", "RECV")
 
 def gotProtocol(p):
     # ClientFactory instead?
@@ -113,6 +115,6 @@ if __name__ == "__main__":
         print "     [*]", bootstrap
         host, port = bootstrap.split(":")
         point = TCP4ClientEndpoint(reactor, host, int(port))
-        d = connectProtocol(point, NCProtocol(ncfactory, "SENDHELLO"))
+        d = connectProtocol(point, NCProtocol(ncfactory, "SENDHELLO", "SEND"))
         d.addCallback(gotProtocol)
     reactor.run()
