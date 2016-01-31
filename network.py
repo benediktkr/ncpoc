@@ -4,6 +4,7 @@ from twisted.internet.protocol import Protocol, Factory, ClientFactory
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint
 from twisted.internet.endpoints import connectProtocol
 from twisted.internet import reactor
+from twisted.internet.error import CannotListenError
 
 import messages
 import node
@@ -13,15 +14,23 @@ class NCProtocol(Protocol):
         self.factory = factory
         self.state = state
         self.VERSION = 0
+        self.remote_nodeid = None
 
     def connectionMade(self):
-        self.ip = str(self.transport.getPeer())
+        ip = self.transport.getPeer()
+        self.remote_ip = ip.host + ":" + str(ip.port)
+
+    def print_peers(self):
+        print " [ ] PEERS:"
+        for peer in self.factory.peers:
+            print "     [*]", peer, self.factory.peers[peer]
 
     def connectionLost(self, reason):
-        print "LEAVES:", self.ip
+        print " [ ] LEAVES:", self.remote_nodeid
         try:
             # ghost peers?
-            self.factory.peers.pop(self.ip)
+            self.factory.peers.pop(self.remote_nodeid)
+            self.print_peers()
         except KeyError:
             pass
 
@@ -31,7 +40,7 @@ class NCProtocol(Protocol):
 
     def send_HELLO(self):
         hello = messages.create_hello(self.factory.nodeid, self.VERSION)
-        print "SEND_HELLO:", self.factory.nodeid
+        print " [ ] SEND_HELLO:", self.factory.nodeid, "to", self.remote_ip
         self.transport.write(hello + "\n")
         self.state = "GETHELLO"
 
@@ -40,21 +49,22 @@ class NCProtocol(Protocol):
             hello = messages.read_message(hello)
             self.remote_nodeid = hello['msg']['nodeid']
             if self.remote_nodeid == self.factory.nodeid:
-                print "Connected to self. Aborting"
+                print "     [!] Connected to self. Aborting"
                 self.transport.loseConnection()
             else:
                 my_hello = messages.create_hello(self.factory.nodeid, self.VERSION)
                 self.transport.write(my_hello + "\n")
-                self.factory.peers[self.ip] = self.remote_nodeid
+                self.factory.peers[self.remote_nodeid] = self.remote_ip
                 self.state = "READY"
 
-                print "JOIN: ", self.ip, self.remote_nodeid
-                print "PEERS:", str(self.factory.peers)
+                print " [ ] JOINED:", self.remote_nodeid
+                self.print_peers()
         except (ValueError, ):
-            print "Unable to read hello msg from " + str(self.ip)
+            print " [!] Disconnecting peer. Unable to read hello msg from " + self.remote_ip
+            self.transport.loseConnection()
         except messages.InvalidSignatureError:
-            print "Invalid signature in hello"
-
+            print " [!] Disconnecting peer. Invalid signature in hello from " + self.remote_ip
+            self.transport.loseConnection()
 
 class NCFactory(Factory):
     def __init__(self):
@@ -63,8 +73,8 @@ class NCFactory(Factory):
     def startFactory(self):
         self.peers = {}
         self.numProtocols = 0
-        self.nodeid = node.generate_nodeid()
-        print "NODEID:", self.nodeid
+        self.nodeid = node.generate_nodeid()[:10]
+        print " [ ] NODEID:", self.nodeid
 
     def stopFactory(self):
         pass
@@ -89,19 +99,26 @@ def gotProtocol(p):
     p.send_HELLO()
     
 if __name__ == "__main__":
+    # start listener
     if len(sys.argv) == 2:
         port = int(sys.argv[1])
     else:
         port = 5005
-    endpoint = TCP4ServerEndpoint(reactor, port)
-    print "LISTEN:", port
-    ncfactory = NCFactory()
-    endpoint.listen(ncfactory)
+    try:
+        endpoint = TCP4ServerEndpoint(reactor, port)
+        print " [ ] LISTEN:", port
+        ncfactory = NCFactory()
+        endpoint.listen(ncfactory)
+    except CannotListenError:
+        print "[!] Address in use"
+        sys.exit(1)
+
+    
     # connect to bootstrap addresses
     for bootstrap in node.bootstrap_list:
-        print "Trying to connect to bootstrap host:", bootstrap
+        print " [ ] Trying to connect to bootstrap host:", bootstrap
         host, port = bootstrap.split(":")
         point = TCP4ClientEndpoint(reactor, host, int(port))
-        d = connectProtocol(point, NCProtocol(ncfactory, "GETHELLO"))
+        d = connectProtocol(point, NCProtocol(ncfactory, "SENDHELLO"))
         d.addCallback(gotProtocol)
     reactor.run()
