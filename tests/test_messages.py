@@ -21,15 +21,15 @@ class TestMessages(unittest.TestCase):
         ackhello = messages.create_ackhello(self.nodeid)
         return messages.read_message(ackhello)
 
-    def test_pingpong(self):
+    def test_ping(self):
         ping = messages.create_ping(self.nodeid)
         # check that InvalidSignatureError isn't raised
-        read_ping = messages.read_message(ping)
-        pong = messages.create_pong(self.nodeid, read_ping)
+        return messages.read_message(ping)
+
+    def test_pong(self):
+        pong = messages.create_pong(self.nodeid)
         # exceptions?
-        read_pong = messages.read_message(pong)
-        expected_nonce = messages.incr_nonce(read_ping)
-        self.assertEquals(read_pong['data']['nonce'], expected_nonce)
+        return messages.read_message(pong)
                                     
 if __name__ == "__main__":
     unittest.main()            

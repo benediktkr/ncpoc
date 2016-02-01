@@ -1,10 +1,11 @@
 import sys
 
+from twisted.internet import reactor
 from twisted.internet.protocol import Protocol, Factory
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint
 from twisted.internet.endpoints import connectProtocol
-from twisted.internet import reactor
 from twisted.internet.error import CannotListenError
+from twisted.internet.task import LoopingCall
 
 import messages
 import cryptotools
@@ -21,6 +22,8 @@ class NCProtocol(Protocol):
         self.VERSION = 0
         self.remote_nodeid = None
         self.kind = kind
+        self.nodeid = self.factory.nodeid
+        self.lc_ping = LoopingCall(self.send_PING)
 
     def connectionMade(self):
         r_ip = self.transport.getPeer()
@@ -29,48 +32,77 @@ class NCProtocol(Protocol):
         self.host_ip = h_ip.host + ":" + str(h_ip.port)
 
     def print_peers(self):
+        print " [ ] STATE:", self.state
         if len(self.factory.peers) == 0:
-            print " [ ] PEERS: No peers connected."
+            print " [!] PEERS: No peers connected."
         else:
             print " [ ] PEERS:"
             for peer in self.factory.peers:
                 addr, kind = self.factory.peers[peer] 
                 print "     [*]", peer, addr, kind
 
+    def write(self, line):
+        self.transport.write(line + "\n")
+
     def connectionLost(self, reason):
         print " [ ] LEAVES:", self.remote_nodeid
-        try:
-            # ghost peers?
-            self.factory.peers.pop(self.remote_nodeid)
-            self.print_peers()
-        except KeyError:
-            pass
+        if self.remote_nodeid != self.nodeid:
+            try:
+                self.factory.peers.pop(self.remote_nodeid)
+                self.print_peers()
+            except KeyError:
+                print " [?] GHOST:", self.remote_nodeid, self.remote_ip
 
     def dataReceived(self, data):
-        if self.state == "GETHELLO":
+        if self.state != "READY":
+            # Force first message to be HELLO or crash
             self.handle_HELLO(data)
+        else:
+            print "else"
+            envelope = messages.read_envelope(data)
+            if envelope['msgtype'] == 'ping':
+                print "ping"
+                self.handle_PING(data)
+            elif envelope['msgtype'] == 'pong':
+                self.handle_PONG(data)
+
+    def send_PING(self):
+        print " [ ] SEND_PING:", self.nodeid, "to", self.remote_nodeid
+        ping = messages.create_ping(self.nodeid)
+        self.write(ping)
+
+    def handle_PING(self, ping):
+        print " [ ] RECV_PING:", self.remote_nodeid
+        ping = messages.read_message(ping)
+        pong = messages.create_pong(self.nodeid, ping)
+        print " [ ] SEND_PONG"
+        self.write(pong)
+
+    def handle_PONG(self, pong):
+        # TODO: somehow get the ping nonce and check?
+        pong = messages.read_message(pong)
 
     def send_HELLO(self):
-        hello = messages.create_hello(self.factory.nodeid, self.VERSION)
-        print " [ ] SEND_HELLO:", self.factory.nodeid, "to", self.remote_ip
+        hello = messages.create_hello(self.nodeid, self.VERSION)
+        print " [ ] SEND_HELLO:", self.nodeid, "to", self.remote_ip
         self.transport.write(hello + "\n")
         self.state = "GETHELLO"
-
+        
     def handle_HELLO(self, hello):
         try:
             hello = messages.read_message(hello)
-            self.remote_nodeid = hello['data']['nodeid']
-            if self.remote_nodeid == self.factory.nodeid:
-                print "     [!] Dropping connection to self on", self.host_ip
+            self.remote_nodeid = hello['nodeid']
+            if self.remote_nodeid == self.nodeid:
+                print " [!] Dropping connection to self on", self.host_ip
                 self.transport.loseConnection()
             else:
-                my_hello = messages.create_hello(self.factory.nodeid, self.VERSION)
+                my_hello = messages.create_hello(self.nodeid, self.VERSION)
                 self.transport.write(my_hello + "\n")
                 self.factory.peers[self.remote_nodeid] = (self.remote_ip, self.kind)
                 self.state = "READY"
-
                 print " [ ] JOINED:", self.remote_nodeid
                 self.print_peers()
+                self.lc_ping.start(4.20)
         except (ValueError, ):
             print " [!] Disconnecting peer. ",
             print "Unable to read hello msg from", self.remote_ip
