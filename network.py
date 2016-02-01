@@ -7,7 +7,12 @@ from twisted.internet import reactor
 from twisted.internet.error import CannotListenError
 
 import messages
-import node
+import cryptotools
+
+bootstrap_list = ["localhost:5008",
+                  "localhost:5007",
+                  "localhost:5006",
+                  "localhost:5005"]
 
 class NCProtocol(Protocol):
     def __init__(self, factory, state="GETHELLO", kind="RECV"):
@@ -54,7 +59,7 @@ class NCProtocol(Protocol):
     def handle_HELLO(self, hello):
         try:
             hello = messages.read_message(hello)
-            self.remote_nodeid = hello['msg']['nodeid']
+            self.remote_nodeid = hello['data']['nodeid']
             if self.remote_nodeid == self.factory.nodeid:
                 print "     [!] Dropping connection to self on", self.host_ip
                 self.transport.loseConnection()
@@ -67,10 +72,12 @@ class NCProtocol(Protocol):
                 print " [ ] JOINED:", self.remote_nodeid
                 self.print_peers()
         except (ValueError, ):
-            print " [!] Disconnecting peer. Unable to read hello msg from " + self.remote_ip
+            print " [!] Disconnecting peer. ",
+            print "Unable to read hello msg from", self.remote_ip
             self.transport.loseConnection()
         except messages.InvalidSignatureError:
-            print " [!] Disconnecting peer. Invalid signature in hello from " + self.remote_ip
+            print " [!] Disconnecting peer. ",
+            print "Invalid signature in hello from", self.remote_ip
             self.transport.loseConnection()
 
 class NCFactory(Factory):
@@ -80,7 +87,7 @@ class NCFactory(Factory):
     def startFactory(self):
         self.peers = {}
         self.numProtocols = 0
-        self.nodeid = node.generate_nodeid()[:10]
+        self.nodeid = cryptotools.generate_nodeid()[:10]
         print " [ ] NODEID:", self.nodeid
 
     def stopFactory(self):
@@ -111,7 +118,7 @@ if __name__ == "__main__":
     
     # connect to bootstrap addresses
     print " [ ] Trying to connect to bootstrap hosts:"
-    for bootstrap in node.bootstrap_list:
+    for bootstrap in bootstrap_list:
         print "     [*]", bootstrap
         host, port = bootstrap.split(":")
         point = TCP4ClientEndpoint(reactor, host, int(port))
