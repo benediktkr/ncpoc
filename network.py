@@ -11,10 +11,12 @@ from twisted.internet.task import LoopingCall
 import messages
 import cryptotools
 
-bootstrap_list = ["localhost:5008",
+PING_INTERVAL = 20.0
+BOOTSTRAP_NODES = ["localhost:5008",
                   "localhost:5007",
                   "localhost:5006",
                   "localhost:5005"]
+
 
 def _print(*args):
     time = datetime.now().time().isoformat()[:8]
@@ -29,7 +31,7 @@ class NCProtocol(Protocol):
         self.remote_nodeid = None
         self.kind = kind
         self.nodeid = self.factory.nodeid
-        #self.lc_ping = LoopingCall(self.send_PING)
+        self.lc_ping = LoopingCall(self.send_PING)
 
     def connectionMade(self):
         r_ip = self.transport.getPeer()
@@ -44,48 +46,53 @@ class NCProtocol(Protocol):
             _print(" [ ] PEERS:")
             for peer in self.factory.peers:
                 addr, kind = self.factory.peers[peer] 
-                _print("     [*]", addr, peer, kind)
+                _print("     [*]", peer, "at", addr, kind)
 
     def write(self, line):
         self.transport.write(line + "\n")
 
     def connectionLost(self, reason):
+        # NOTE: It looks like the NCProtocol instance will linger in memory
+        # since ping keeps going if we don't .stop() it.
+        try: self.lc_ping.stop()
+        except AssertionError: pass
         try:
             self.factory.peers.pop(self.remote_nodeid)
             if self.nodeid != self.remote_nodeid:
                 self.print_peers()
         except KeyError:
             if self.nodeid != self.remote_nodeid:
-                _print(" [ ] GHOST LEAVES:", self.remote_nodeid, self.remote_ip)
+                _print(" [ ] GHOST LEAVES: from", self.remote_nodeid, self.remote_ip)
 
     def dataReceived(self, data):
-
-        if self.state in ["GETHELLO", "SENTHELLO"]:
-            # Force first message to be HELLO or crash
-            self.handle_HELLO(data)
-        else:
-            _print("else", data)
-            envelope = messages.read_envelope(data)
-            if envelope['msgtype'] == 'ping':
-                _print("ping")
-                self.handle_PING(data)
-            elif envelope['msgtype'] == 'pong':
-                self.handle_PONG(data)
+        for line in data.splitlines():
+            line = line.strip()
+            envelope = messages.read_envelope(line)
+            if self.state in ["GETHELLO", "SENTHELLO"]:
+                # Force first message to be HELLO or crash
+                if envelope['msgtype'] == 'hello':
+                    self.handle_HELLO(line)
+                else:
+                    _print(" [!] Ignoring", envelope['msgtype'], "in", self.state)
+            else:
+                if envelope['msgtype'] == 'ping':
+                    self.handle_PING(line)
+                elif envelope['msgtype'] == 'pong':
+                    self.handle_PONG(line)
 
     def send_PING(self):
-        _print(" [ ] SEND_PING:", self.nodeid, "to", self.remote_nodeid)
+        _print(" [>] PING   to", self.remote_nodeid, "at", self.remote_ip)
         ping = messages.create_ping(self.nodeid)
         self.write(ping)
 
     def handle_PING(self, ping):
-        _print(" [ ] RECV_PING:", self.remote_nodeid)
         if messages.read_message(ping):
             pong = messages.create_pong(self.nodeid)
-            _print(" [ ] SEND_PONG")
             self.write(pong)
 
     def handle_PONG(self, pong):
         pong = messages.read_message(pong)
+        _print(" [<] PONG from", self.remote_nodeid, "at", self.remote_ip)
 
     def send_HELLO(self):
         hello = messages.create_hello(self.nodeid, self.VERSION)
@@ -107,10 +114,13 @@ class NCProtocol(Protocol):
                 self.factory.peers[self.remote_nodeid] = (self.remote_ip, self.kind)
                 self.state = "READY"
                 self.print_peers()
-                #self.lc_ping.start(4.20)
-        except (ValueError, ):
-            _print(" [!] ERROR: Malformed hello from", self.remote_ip)
-            self.transport.loseConnection()
+                self.write(messages.create_ping(self.nodeid))
+                if self.kind == "RECV":
+                    # The listener pings it's audience
+                    self.lc_ping.start(PING_INTERVAL)
+        #except (ValueError, ):
+        #    _print(" [!] ERROR: Malformed hello from", self.remote_ip)
+        #    self.transport.loseConnection()
         except messages.InvalidSignatureError:
             _print(" [!] ERROR: Invalid hello sign ", self.remoteip)
             self.transport.loseConnection()
@@ -154,7 +164,7 @@ if __name__ == "__main__":
     
     # connect to bootstrap addresses
     _print(" [ ] Trying to connect to bootstrap hosts:")
-    for bootstrap in bootstrap_list:
+    for bootstrap in BOOTSTRAP_NODES:
         _print("     [*]", bootstrap)
         host, port = bootstrap.split(":")
         point = TCP4ClientEndpoint(reactor, host, int(port))
