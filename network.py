@@ -1,5 +1,6 @@
 import sys
 from datetime import datetime
+from time import time
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Protocol, Factory
@@ -16,7 +17,6 @@ BOOTSTRAP_NODES = ["localhost:5008",
                   "localhost:5007",
                   "localhost:5006",
                   "localhost:5005"]
-
 
 def _print(*args):
     time = datetime.now().time().isoformat()[:8]
@@ -45,7 +45,7 @@ class NCProtocol(Protocol):
         else:
             _print(" [ ] PEERS:")
             for peer in self.factory.peers:
-                addr, kind = self.factory.peers[peer] 
+                addr, kind = self.factory.peers[peer][:2]
                 _print("     [*]", peer, "at", addr, kind)
 
     def write(self, line):
@@ -93,6 +93,9 @@ class NCProtocol(Protocol):
     def handle_PONG(self, pong):
         pong = messages.read_message(pong)
         _print(" [<] PONG from", self.remote_nodeid, "at", self.remote_ip)
+        # hacky
+        addr, kind = self.factory.peers[self.remote_nodeid][:2]
+        self.factory.peers[self.remote_nodeid] = (addr, kind, time())
 
     def send_HELLO(self):
         hello = messages.create_hello(self.nodeid, self.VERSION)
@@ -111,16 +114,14 @@ class NCProtocol(Protocol):
                 if self.state == "GETHELLO":
                     my_hello = messages.create_hello(self.nodeid, self.VERSION)
                     self.transport.write(my_hello + "\n")
-                self.factory.peers[self.remote_nodeid] = (self.remote_ip, self.kind)
+                entry = (self.remote_ip, self.kind, time())
+                self.factory.peers[self.remote_nodeid] = entry
                 self.state = "READY"
                 self.print_peers()
                 self.write(messages.create_ping(self.nodeid))
                 if self.kind == "RECV":
                     # The listener pings it's audience
-                    self.lc_ping.start(PING_INTERVAL)
-        #except (ValueError, ):
-        #    _print(" [!] ERROR: Malformed hello from", self.remote_ip)
-        #    self.transport.loseConnection()
+                    self.lc_ping.start(PING_INTERVAL, now=False)
         except messages.InvalidSignatureError:
             _print(" [!] ERROR: Invalid hello sign ", self.remoteip)
             self.transport.loseConnection()
