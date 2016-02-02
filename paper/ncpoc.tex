@@ -1,0 +1,307 @@
+\documentclass[a4paper]{article}           % Switch to report for front page
+\renewcommand{\refname}{References}
+\usepackage{amsmath,amsfonts,amsthm,amssymb}
+\usepackage[utf8]{inputenc}
+%\usepackage[icelandic]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{setspace}                      % Allows more fine-grained control over line spacing
+\usepackage{fancyhdr}                      % Headers and footers
+\usepackage{lastpage}                      % Allows references to the last page of the document
+\usepackage{chngpage}                      % Change format mid-page ?
+\usepackage{soul}                          % Highlights text, with \hl{}
+\usepackage[usenames,dvipsnames]{color}    % Add color to text
+\usepackage{graphicx,float,wrapfig}
+\usepackage{ifthen}                        % \ifthenelse{}
+\usepackage{listings} 
+\usepackage{courier}                      % Write in a monospace font
+%\usepackage{geometry}                      % Because 'fullpage' is outdated
+\usepackage{hyperref}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{subfig}
+\usepackage{placeins}
+
+\newtheorem{mydef}{Definition}
+\newcommand{\Title}{A proof-of-concept implementation}
+\newcommand{\SubTitle}{A distributed peer-to-peer ledger for trust in HTTPS}
+\newcommand{\DueDate}{\today} % Or \today
+\newcommand{\Class}{NameChain}
+\newcommand{\AuthorClearSpace}{3in}    % How far below the title the author name shoudl appear
+\newcommand{\ClassInstructor}{}
+\newcommand{\AuthorName}{Benedikt Kristinsson}
+\newcommand{\DueLang}{}     % Icelandic   (perhaps some ifelse on language pack)
+%\newcommand{\DueLang}{Due on}   % English
+
+
+%\topmargin=-0.45in      
+%\evensidemargin=0in     
+%\oddsidemargin=0in      
+%\textwidth=6.5in        
+%\textheight=9.0in       
+%\headsep=0.25in         
+
+% This is the color used for comments below
+\definecolor{MyDarkGreen}{rgb}{0.0,0.4,0.0}
+\definecolor{MyDarkRed}{rgb}{0.4,0.0,0.0}
+
+
+\lstloadlanguages{Python}
+\lstset{language=Python,                        
+       %frame=single,                               % Single frame around code
+       %basicstyle=\small\ttfamily,                 % Use small true type font
+        basicstyle=\small,                          % Don't use ttf
+        keywordstyle=[1]\color{Blue}, %\bf          % functions green (bold commented out)
+        keywordstyle=[2]\color{Green},              % function arguments purple
+        keywordstyle=[3]\color{Red}\underbar,       % User functions underlined and blue
+        identifierstyle=,
+        commentstyle=\usefont{T1}{pcr}{m}{sl}\color{MyDarkRed}\small,
+        stringstyle=\color{MyDarkGreen},              % Strings
+        showstringspaces=false,                     % Don't put marks in string spaces
+        tabsize=4,
+        % To add more keywords
+       %morekeywords={},
+        % Function parameters
+       %morekeywords=[2]{on, off, interp},
+        %%% Put user defined functions here
+       %morekeywords=[3]{FindESS, homework_example},
+        %
+       %morecomment=[l][\color{Grey}]{...},        % Line continuation (...) like blue comment
+       %numbers=left,                              % Line numbers on left
+       %firstnumber=1,                             % Line numbers start with line 1
+       %numberstyle=\tiny\color{Grey},             % Line numbers are blue
+       %stepnumber=1                               % Line numbers go in steps of 1
+        }
+
+% Setup the header and footer
+%\pagestyle{fancy} % Pagestyle allows for header/foother
+\pagestyle{plain} % No header/footerer
+\lhead{\AuthorName}                                                 
+\chead{\SubTitle}  
+\rhead{\Class}  
+%\cfoot{\thepage}   
+% \rfoot{Page\ \thepage\ of\ \protect\pageref{LastPage}}
+\renewcommand\headrulewidth{0.4pt}                     
+%\renewcommand\footrulewidth{0.4pt}                     
+% This is used to trace down (pin point) problems in latexing a document:
+%\tracingall
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Some tools
+
+% Includes a figure
+% The first parameter is the label, which is also the name of the figure
+%   with or without the extension (e.g., .eps, .fig, .png, .gif, etc.)
+%   IF NO EXTENSION IS GIVEN, LaTeX will look for the most appropriate one.
+% The second parameter is the width of the figure normalized to column width
+%   (e.g. 0.5 for half a column, 0.75 for 75% of the column)
+% The third parameter is the caption.
+\newcommand{\scalefig}[3]{
+  \begin{figure}[ht!]
+    % Requires \usepackage{graphicx}
+    \centering
+    \includegraphics[width=#2\columnwidth]{#1}
+    %%% I think \captionwidth (see above) can go away as long as
+    %%% \centering is above
+    %\captionwidth{#2\columnwidth}%
+    \caption{#3}
+    \label{#1}
+  \end{figure}}
+
+% Includes code
+% The first parameter is the label, which also is the name of the script
+%   with the file extension the '#1' in the command belove
+% The second parameter is the optional caption.
+\newcommand{\code}[2]
+{\begin{itemize}\item[]\lstinputlisting[caption=#2,label=#1]{#1}\end{itemize}}
+  
+
+%\setcounter{secnumdepth}{0}
+\newcommand{\problem}[2]
+{
+   \subsubsection*{\sc{#1}}
+               #2
+}
+\newcommand{\tmpsection}[1]{}
+\let\tmpsection=\section
+
+\renewcommand{\section}[2]{
+
+    \ifthenelse{
+      \equal{#2}{*} % I have to be oddly specific here
+    }
+    {
+      \tmpsection{References}
+      \tmpsection{\sc{#2} }
+    }
+    {\tmpsection{\sc{#1} } }
+      
+
+}
+
+
+\title{
+    \Class:\ \Title
+    %\ifthenelse{\equal{\SubTitle}{}}{}{\\{\SubTitle}}
+    }
+\date{\small{\DueLang\ \DueDate}}
+\author{\AuthorName\\Advisor: \ClassInstructor\\}
+
+
+\begin{document}
+\maketitle
+
+
+% Uncomment the \tableofcontents and \newpage lines to get a Contents page
+% Uncomment the \setcounter line as well if you do NOT want subsections
+%       listed in Contents
+% Remeber to compile twice
+%\setcounter{tocdepth}{1}
+%\tableofcontents
+%\newpage
+
+%\clearpage
+%x\section{Lausn verkefnis og útfærsla}
+
+\begin{abstract}
+
+  Traditionally we have come to rely on Certificate Authroities (CA)
+  to verify that the servers we connect to are the ones we are relly
+  trying to connect to. The CA system is very centralized and more
+  based on beurocracy than technology. 
+
+  In this essay we propose a distributed and peer-to-peer techonology
+  that is builds a distributed consent of what encryption keys a
+  client should expect a remote server to use. Rather than having to
+  trust one central authority to tell the truth, the network forms a
+  majority that is trusted.
+
+\end{abstract}
+
+\section{Introduction}
+% Motivation
+ 
+% Example of how to write code in this template
+
+The current CA model is broken. \\
+
+Operating systems and browsers come pre-loaded with CA certificates
+and will blindly trust their signatures. One rouge CA being
+distributed in such a way would make dragnet attacks almost trivial,
+and begs the question of wether they have been used for targetted
+attacks. In a post-Snowden world, we have to consider these to be
+facts, rather than mere speculations. \\
+
+
+\subsection{Contributions}
+
+The contributions of this work are the following:
+
+\begin{itemize}
+
+  \item An implementation of a peer-to-peer network with Python and Twisted
+
+\end{itemize}
+
+\section{Vendor-shipped CA certificates}
+
+The CA model instills trusts by having Certificates Authorities sign
+certificates. For the operating system or browser to be able to verify
+this signature, they need to maintain a list of known CA certificates,
+called \textit{root certificates}.  These lists come pre-shipped with
+the software and are thus hard to maintain and keep up-to-date. \\
+
+If any of these root certificates have signed a certificate for any
+given domain, the software will accept the signature as valid and,
+more importantly - that the remote server is who it claims to be. If a
+state-level actor has control over just one of the root certificates
+distributed (hereby referred to be as a \textit{rouge certificate})
+then they can man-in-the-middle the connection
+trivially. Occasionally, there have been doubts about the legitimacy
+of some of these certificates\footnote{dig up examples} and the
+Chinese government has at least one broadly distributed
+certificate. \\
+
+Mozilla Project publishes their CA Certificate
+Policy~\cite{mozillacapolicy} which details the application process,
+as well as how Mozilla maintains trust in the root certificates. More
+detailed discussion is mainted on the Mozilla
+Wiki~\cite{mozillacawiki}, including lists of current CA certificates
+as well as a list of all removed CA certificates (although it does not
+detail the reasons for the removal).\\
+
+%Microsoft Trusted Root Certificate, published program requirements\footnote{https://technet.microsoft.com/en-us/library/cc751157.aspx} and there are some Membership Lists\footnote{http://download.microsoft.com/download/1/5/7/157B29AB-F890-464A-995A-C87945B28E5A/Windows\%20Root\%20Certificate\%20Program\%20Members\%20-\%20Sept\%202014.pdf} as PDFs on Microsoft Download.\\
+
+
+\section{Protocol description}
+
+NameChain is a peer-to-peer network to validate certificates with a
+majority consensus protocol. It is heavily influenced by the structure
+of Bitcoin~\cite{bitcoin2008}. As the proof-of-concept implemenation
+is not stable software and might be worked on after the finalization
+this essay, the protocol might change. Readers are directed towards
+the project on GitHub~\cite{ncpocgithub} for an up-to-date protocol
+description. Best effors are made to keep the \texttt{README.md} file
+for the project accuarte, but ultimately the protocol is specified by
+the sorce code. \\
+
+\section{Proof-of-concept implementation}
+
+
+The proof-of-concept implemenation is written in Python and uses
+Twisted\footnote{\url{https://twistedmatrix.com/}} to implement the
+protocol and peer-to-peer network. The code is hosted and maintained
+on GitHub~\cite{ncpocgithub}. Messages are serialized to JSON-strings
+before being sent over the network, wrapped in an JSON envelope with a
+HMAC signature. \\
+
+\begin{lstlisting}[caption=JSON envelope structure]
+def make_envelope(msgtype, msg, nodeid):
+    msg['nodeid'] = nodeid
+    msg['nonce'] =  nonce()
+    sign = hmac.new(nodeid, json.dumps(msg))
+    envelope = {'data': msg,
+                'sign': sign.hexdigest(),
+                'msgtype': msgtype}
+    return json.dumps(envelope)
+\end{lstlisting}
+
+Seeing as this is a personal research PoC implementation, broad public
+use is not anticipated. The author currently maintains bootstrapping
+nodes at \texttt{freespace.sudo.is} and \texttt{ncnode.sudo.is}, with
+no guarantee of uptime.
+
+
+%\section{Case study: pre-loaded CA certificates}
+%
+%\subsection{Firefox nightly}
+%
+%\subsection{Windows 7}
+%
+%\subsection{Debian}
+%
+%\subsection{Ubuntu}
+
+
+
+\bibliographystyle{plain}
+\bibliography{ncpoc}
+
+
+\end{document}
+
+% Stuff to mention
+% Switching from 9600 baudrate to the new one resulting in leastsignrand passing poker test
+% Also resulted in SerialException
+% How closely the algs miss the FIPS test
+% Bitrates in 9600 vs new one
+% Check other baudrates?
+
+% Eftir að gera
+%% Sýna graf frá einum Arduino þar sem lesið er frá öllum pinnum
+%% Athgua hvort að ard3 sýni drop á skógarbraut. Taka gröf úr ard2 líka. Skoða ard1
+%% Sýna munin á gildum í mismuandi herbergjum (fossahvarf vs skógarbraut)
+
+% Athugasemdir til Ýmis:
+%% Mig vantar að orða tengsl við Tsense einhversstaðar
+%%% Tsense notaði einmitt aðferðina að lesa analogRead til að búa seed, koma því að
+%% Eiga öll NIST security levels erindi í skýrsluna?
+%% Ég set footnote á randomSeed referencið í introduction en myndi líka að þurfa að vitna í það í seinni kafla. Hvernig geri ég það snyrtilegast?

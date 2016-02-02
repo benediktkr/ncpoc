@@ -1,5 +1,15 @@
 *~
 
+# Latex
+*.aux
+*.bbl
+*.blg
+*.out
+
+# emacs
+\#*\#
+.#*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
