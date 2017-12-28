@@ -114,7 +114,7 @@ class NCProtocol(Protocol):
                 if node[0] == self.nodeid:
                     _print(" [!] Not connecting to " + node[0] + ": thats me!")
                     return
-                if node[1] != "SEND":
+                if node[1] != "SPEAKER":
                     _print(" [ ] Not connecting to " + node[0] + ": is " + node[1])
                     return
                 if node[0] in self.factory.peers:
@@ -124,7 +124,7 @@ class NCProtocol(Protocol):
                 # TODO: Use [2] and a time limit to not connect to "old" peers
                 host, port = node[0].split(":")
                 point = TCP4ClientEndpoint(reactor, host, int(port))
-                d = connectProtocol(point, NCProtocol(ncfactory, "SENDHELLO", "SEND"))
+                d = connectProtocol(point, NCProtocol(ncfactory, "SENDHELLO", "SPEAKER"))
                 d.addCallback(gotProtocol)
         except messages.InvalidSignatureError:
             print addr
