@@ -201,7 +201,7 @@ if __name__ == "__main__":
     else:
         port = 5005
     try:
-        endpoint = TCP4ServerEndpoint(reactor, port)
+        endpoint = TCP4ServerEndpoint(reactor, port, interface="151.217.219.153")
         _print(" [ ] LISTEN:", port)
         ncfactory = NCFactory()
         endpoint.listen(ncfactory)
