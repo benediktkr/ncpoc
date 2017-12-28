@@ -23,9 +23,9 @@ def _print(*args):
     time = datetime.now().time().isoformat()[:8]
     print time,
     print " ".join(map(str, args))
-    
+
 class NCProtocol(Protocol):
-    def __init__(self, factory, state="GETHELLO", kind="RECV"):
+    def __init__(self, factory, state="GETHELLO", kind="LISTENER"):
         self.factory = factory
         self.state = state
         self.VERSION = 0
@@ -58,7 +58,7 @@ class NCProtocol(Protocol):
         # since ping keeps going if we don't .stop() it.
         try: self.lc_ping.stop()
         except AssertionError: pass
-        
+
         try:
             self.factory.peers.pop(self.remote_nodeid)
             if self.nodeid != self.remote_nodeid:
@@ -143,7 +143,7 @@ class NCProtocol(Protocol):
         #_print(" [ ] SEND_HELLO:", self.nodeid, "to", self.remote_ip)
         self.transport.write(hello + "\n")
         self.state = "SENTHELLO"
-        
+
     def handle_HELLO(self, hello):
         try:
             hello = messages.read_message(hello)
@@ -159,7 +159,7 @@ class NCProtocol(Protocol):
                 self.state = "READY"
                 self.print_peers()
                 #self.write(messages.create_ping(self.nodeid))
-                if self.kind == "RECV":
+                if self.kind == "LISTENER":
                     # The listener pings it's audience
                     _print(" [ ] Starting pinger to " + self.remote_nodeid)
                     self.lc_ping.start(PING_INTERVAL, now=False)
@@ -188,12 +188,12 @@ class NCFactory(Factory):
         pass
 
     def buildProtocol(self, addr):
-        return NCProtocol(self, "GETHELLO", "RECV")
+        return NCProtocol(self, "GETHELLO", "LISTENER")
 
 def gotProtocol(p):
     # ClientFactory instead?
     p.send_HELLO()
-    
+
 if __name__ == "__main__":
     # start listener
     if len(sys.argv) == 2:
@@ -209,13 +209,13 @@ if __name__ == "__main__":
         _print("[!] Address in use")
         sys.exit(1)
 
-    
+
     # connect to bootstrap addresses
     _print(" [ ] Trying to connect to bootstrap hosts:")
     for bootstrap in BOOTSTRAP_NODES:
         _print("     [*]", bootstrap)
         host, port = bootstrap.split(":")
         point = TCP4ClientEndpoint(reactor, host, int(port))
-        d = connectProtocol(point, NCProtocol(ncfactory, "SENDHELLO", "SEND"))
+        d = connectProtocol(point, NCProtocol(ncfactory, "SENDHELLO", "SPEAKER"))
         d.addCallback(gotProtocol)
     reactor.run()
