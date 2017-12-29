@@ -1,5 +1,5 @@
+#!/usr/bin/python2.7
 
-import sys
 import argparse
 from datetime import datetime
 
@@ -15,28 +15,28 @@ def _print(*args):
     # double, make common module
     time = datetime.now().time().isoformat()[:8]
     print time,
-    print " ".join(map(str, args))
+    print "".join(map(str, args))
 
+parser = argparse.ArgumentParser(description="ncpoc")
+parser.add_argument('--port', type=int, default="5005")
+parser.add_argument('--listen', default="127.0.0.1")
 
 if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        port = int(sys.argv[1])
-    else:
-        port = 5005
+    args = parser.parse_args()
     try:
-        endpoint = TCP4ServerEndpoint(reactor, port, interface="151.217.219.153")
-        _print(" [ ] LISTEN:", port)
+        endpoint = TCP4ServerEndpoint(reactor, args.port, interface=args.listen)
+        _print(" [ ] LISTEN:", args.listen, ":", args.port)
         ncfactory = NCFactory()
         endpoint.listen(ncfactory)
     except CannotListenError:
         _print("[!] Address in use")
-        sys.exit(1)
+        raise SystemExit
 
 
     # connect to bootstrap addresses
     _print(" [ ] Trying to connect to bootstrap hosts:")
     for bootstrap in network.BOOTSTRAP_NODES:
-        _print("     [*]", bootstrap)
+        _print("     [*] ", bootstrap)
         host, port = bootstrap.split(":")
         point = TCP4ClientEndpoint(reactor, host, int(port))
         d = connectProtocol(point, NCProtocol(ncfactory, "SENDHELLO", "SPEAKER"))
