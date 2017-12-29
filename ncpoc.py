@@ -20,7 +20,7 @@ def _print(*args):
 parser = argparse.ArgumentParser(description="ncpoc")
 parser.add_argument('--port', type=int, default="5005")
 parser.add_argument('--listen', default="127.0.0.1")
-parser.add_argument('--bootstrap', action="append")
+parser.add_argument('--bootstrap', action="append", default=[])
 
 if __name__ == "__main__":
     args = parser.parse_args()
