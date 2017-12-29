@@ -1,13 +1,11 @@
-import sys
 from datetime import datetime
 from time import time
 from functools import partial
 
 from twisted.internet import reactor
 from twisted.internet.protocol import Protocol, Factory
-from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint
+from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.internet.endpoints import connectProtocol
-from twisted.internet.error import CannotListenError
 from twisted.internet.task import LoopingCall
 
 import messages
@@ -193,29 +191,3 @@ class NCFactory(Factory):
 def gotProtocol(p):
     # ClientFactory instead?
     p.send_HELLO()
-
-if __name__ == "__main__":
-    # start listener
-    if len(sys.argv) == 2:
-        port = int(sys.argv[1])
-    else:
-        port = 5005
-    try:
-        endpoint = TCP4ServerEndpoint(reactor, port, interface="151.217.219.153")
-        _print(" [ ] LISTEN:", port)
-        ncfactory = NCFactory()
-        endpoint.listen(ncfactory)
-    except CannotListenError:
-        _print("[!] Address in use")
-        sys.exit(1)
-
-
-    # connect to bootstrap addresses
-    _print(" [ ] Trying to connect to bootstrap hosts:")
-    for bootstrap in BOOTSTRAP_NODES:
-        _print("     [*]", bootstrap)
-        host, port = bootstrap.split(":")
-        point = TCP4ClientEndpoint(reactor, host, int(port))
-        d = connectProtocol(point, NCProtocol(ncfactory, "SENDHELLO", "SPEAKER"))
-        d.addCallback(gotProtocol)
-    reactor.run()
