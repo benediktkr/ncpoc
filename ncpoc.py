@@ -17,8 +17,12 @@ def _print(*args):
     print time,
     print "".join(map(str, args))
 
+
+# Move this and network.BOOTSTRAP_NODES somewhere mode sensible
+DEFAULT_PORT = 5005
+
 parser = argparse.ArgumentParser(description="ncpoc")
-parser.add_argument('--port', type=int, default="5005")
+parser.add_argument('--port', type=int, default=DEFAULT_PORT)
 parser.add_argument('--listen', default="127.0.0.1")
 parser.add_argument('--bootstrap', action="append", default=[])
 
@@ -36,7 +40,8 @@ if __name__ == "__main__":
 
     # connect to bootstrap addresses
     _print(" [ ] Trying to connect to bootstrap hosts:")
-    for bootstrap in network.BOOTSTRAP_NODES + args.bootstrap:
+    for bootstrap in network.BOOTSTRAP_NODES + [a+":"+str(DEFAULT_PORT) for a in args.bootstrap]:
+
         _print("     [*] ", bootstrap)
         host, port = bootstrap.split(":")
         point = TCP4ClientEndpoint(reactor, host, int(port))
